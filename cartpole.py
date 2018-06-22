@@ -7,23 +7,24 @@ import scipy.io as sio
 import time
 import argparse
 import gym
+import argparse
 from copy import deepcopy
 from datetime import datetime
 
-alpha = 3e-3
-epsilon = 0.05
+
+alpha = 2e-4
+epsilon = 0.15
+
 gamma = 1.0
 dim_state = 4
 
-max_episodes = 2000
+max_episodes = 15000
 num_trials = 100
+buffer_size = 10000
 
-def OUprocess(n, mu=0, sig=1, th=0.3):
-    y = np.zeros(n+1)
-    for i in range(n):
-        y[i + 1] = y[i] + th * (mu - y[i]) + sig * np.sqrt(2) * np.sqrt(th) * np.random.normal()
-    return y[1:n]
-
+def OU_next(y_prev, mu=0, sig=1, th=0.15):
+    y_next = y_prev + th * (mu - y_prev) + sig * np.sqrt(2) * np.sqrt(th) * np.random.normal()
+    return y_next
 
 class NN():
     def __init__(self):
@@ -72,6 +73,8 @@ class NN():
 
 ########################## white noise #################################
 
+
+
 env = gym.make('CartPole-v1')
 
 PC = []
@@ -102,14 +105,10 @@ for trial in range(num_trials):
             step += 1
             global_step += 1
 
-            tmp = np.random.rand()
+            tmp = np.random.normal(0, 1)
 
-            if tmp < epsilon: # epsilon-greedy
+            if abs(tmp) < epsilon: # epsilon-greedy
                 action = np.random.choice(2)
-                # if noise_OU[global_step] > 0:
-                #     action = 0
-                # else:
-                #     action = 1
             else:
                 action = np.argmax(nn(state))
 
@@ -125,11 +124,17 @@ for trial in range(num_trials):
             batch_a = np.append(batch_a, action)
             batch_q = np.append(batch_q, np.reshape(Q_target, [1,1]), axis=0)
 
+            if global_step > buffer_size + buffer_size / 5 and global_step % (buffer_size/5) == 0:
+                batch_s = batch_s[int(buffer_size / 5):]
+                batch_a = batch_a[int(buffer_size / 5):]
+                batch_q = batch_q[int(buffer_size / 5):]
+
             state = new_state
 
             if global_step > 500:
-                idx = np.random.choice(np.arange(1, global_step), 64)
+                idx = np.random.choice(np.arange(1, min(buffer_size,global_step)), 64)
                 nn.train(batch_s[idx, :], batch_a[idx], batch_q[idx, :])
+
 
         print(step)
         average_reward = total_reward/step
@@ -154,10 +159,12 @@ PC = np.array(PC)
 
 data = {'global_step':GS, 'steps':ST, 'mean_reward':PC}
 
-sio.savemat('../data/cartpole_batch_WN.mat', data)
+sio.savemat('../data/cartpole3_batch_WN_' +'.mat', data)
 
 
 ########################## OU noise #################################
+
+
 env = gym.make('CartPole-v1')
 
 PC = []
@@ -177,8 +184,8 @@ for trial in range(num_trials):
     global_step = 0
     explore_step = 0
     steps = []
-    noise_OU = OUprocess(max_episodes * 200)
-
+    noise_OU = 0
+    prev_action = 0
 
     for episode in range(max_episodes):
 
@@ -192,14 +199,17 @@ for trial in range(num_trials):
             step += 1
             global_step += 1
 
-            tmp = np.random.rand()
+            noise_OU = OU_next(noise_OU)
 
-            if tmp < epsilon: # epsilon-greedy
-                explore_step += 1
-                if noise_OU[explore_step] > 0:
-                    action = 0
+            # tmp = np.random.normal(0, 1)
+
+            if np.abs(noise_OU) < epsilon: # epsilon-greedy
+
+                # action = np.random.choice(2)
+                if noise_OU > 0:
+                    action = prev_action
                 else:
-                    action = 1
+                    action = 1-prev_action
             else:
                 action = np.argmax(nn(state))
 
@@ -215,11 +225,17 @@ for trial in range(num_trials):
             batch_a = np.append(batch_a, action)
             batch_q = np.append(batch_q, np.reshape(Q_target, [1, 1]), axis=0)
 
+            if global_step > buffer_size + buffer_size / 5 and global_step % (buffer_size/5) == 0:
+                batch_s = batch_s[int(buffer_size / 5):]
+                batch_a = batch_a[int(buffer_size / 5):]
+                batch_q = batch_q[int(buffer_size / 5):]
+
             state = new_state
 
             if global_step > 500:
-                idx = np.random.choice(np.arange(1, global_step), 64)
+                idx = np.random.choice(np.arange(1, min(buffer_size,global_step)), 64)
                 nn.train(batch_s[idx, :], batch_a[idx], batch_q[idx, :])
+
 
         average_reward = total_reward/step
         print(step)
@@ -244,5 +260,5 @@ PC = np.array(PC)
 
 data = {'global_step':GS, 'steps':ST, 'mean_reward':PC}
 
-sio.savemat('../data/cartpole_batch_OU.mat', data)
+sio.savemat('../data/cartpole3_batch_OU_' +'.mat', data)
 
