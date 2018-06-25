@@ -1,18 +1,10 @@
 import tensorflow as tf
-from tensorflow.contrib import layers
 import numpy as np
-import matplotlib.pyplot as plt
-import scipy
 import scipy.io as sio
-import time
-import argparse
 import gym
-import argparse
-from copy import deepcopy
-from datetime import datetime
 
 
-alpha = 2e-4
+alpha = 1e-4
 epsilon = 0.15
 
 gamma = 1.0
@@ -22,7 +14,7 @@ max_episodes = 15000
 num_trials = 100
 buffer_size = 10000
 
-def OU_next(y_prev, mu=0, sig=1, th=0.15):
+def OU_next(y_prev, mu=0, sig=1, th=0.05):
     y_next = y_prev + th * (mu - y_prev) + sig * np.sqrt(2) * np.sqrt(th) * np.random.normal()
     return y_next
 
@@ -107,7 +99,7 @@ for trial in range(num_trials):
 
             tmp = np.random.normal(0, 1)
 
-            if abs(tmp) < epsilon: # epsilon-greedy
+            if episode < 14000 and abs(tmp) < epsilon: # epsilon-greedy
                 action = np.random.choice(2)
             else:
                 action = np.argmax(nn(state))
@@ -131,7 +123,7 @@ for trial in range(num_trials):
 
             state = new_state
 
-            if global_step > 500:
+            if episode < 14000 and global_step > 500:
                 idx = np.random.choice(np.arange(1, min(buffer_size,global_step)), 64)
                 nn.train(batch_s[idx, :], batch_a[idx], batch_q[idx, :])
 
@@ -203,13 +195,19 @@ for trial in range(num_trials):
 
             # tmp = np.random.normal(0, 1)
 
-            if np.abs(noise_OU) < epsilon: # epsilon-greedy
+            if episode < 14000 and np.abs(noise_OU) < epsilon: # epsilon-greedy
 
                 # action = np.random.choice(2)
+                # if noise_OU > 0:
+                #     action = prev_action
+                # else:
+                #     action = 1-prev_action
+
                 if noise_OU > 0:
-                    action = prev_action
+                    action = 1
                 else:
-                    action = 1-prev_action
+                    action = 0
+
             else:
                 action = np.argmax(nn(state))
 
@@ -232,7 +230,7 @@ for trial in range(num_trials):
 
             state = new_state
 
-            if global_step > 500:
+            if episode < 14000 and global_step > 500:
                 idx = np.random.choice(np.arange(1, min(buffer_size,global_step)), 64)
                 nn.train(batch_s[idx, :], batch_a[idx], batch_q[idx, :])
 

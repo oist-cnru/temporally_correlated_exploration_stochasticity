@@ -8,7 +8,7 @@ gamma = 0.99
 num_trials = 100
 num_episodes = 20000
 
-def OU_next(y_prev, mu=0, sig=1, th=0.15):
+def OU_next(y_prev, mu=0, sig=1, th=0.05):
     y_next = y_prev + th * (mu - y_prev) + sig * np.sqrt(2) * np.sqrt(th) * np.random.normal()
     return y_next
 
