@@ -1,5 +1,9 @@
 # temporally_correlated_exploration_stochasticity
 
+Code for the poster presentation at Japanese Neural Network Society Meeting 2018.
+
+Please check the (non-peer-reviewed) conference paper (Improving exploration in reinforcement learning with temporally correlated stochasticity.pdf) and poster (poster.pdf) for details.
+
 ## Required Libraries:
 - TensorFlow
 - OpenAI Gym
@@ -18,3 +22,4 @@ or
 ```
 python chain_world.py
 ```
+for getting the results in Fig.2 in the paper.
